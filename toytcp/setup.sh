@@ -42,8 +42,31 @@ sudo ip netns exec host2 ip route add 0.0.0.0/0 via 10.0.1.254
 sudo ip netns exec router sysctl -w net.ipv4.ip_forward=1
 
 # drop RST
+# 今回の実装ではRSTセグメントを無視する
+# Linuxがカーネルが持つプロトコルスタックと生ソケットの両方にパケットを渡す
+# toytcpが流したSYNセグメントは宛先で動くOSのTCPとtoytcpの両方が受け取ることになる
+# OSのTCPからすれば開けていないポートに対してSYNセグメントが到達したことになり、OS
+# のTCPは送信元へRSTセグメントを送信し、コネクションの確立を拒否しようとする
+
+# 正常時
+# client --[SYN=1,ACK=0,SEQ=0,srcport=14000,destport=80]-> server
+# client <-[SYN=1,ACK=1,SEQ=0,srcport=80,destport=14000]-- server
+# client --[SYN=0,ACK=1,SEQ=1,srcport=14000,destport=80]-> server
+
+# 異常時
+# client --[SYN=1,ACK=0,SEQ=0,srcport=14000,destport=80]-> server
+# client <-[SYN=1,ACK=1,SEQ=0,srcport=80,destport=14000]-- server(toytcp)
+# client <-[SYN=1,ACK=1,SEQ=0,RST=1,srcport=80,destport=14000]-- server(OS) // OS側で80portは開けていないため、RSTパケットを返す
+#
+# RSTパケット:
+# TCPのRSTフラグを1にしたもの
+# 接続要求を拒絶したり、確立された接続を一方的に切断する際に送られる
 sudo ip netns exec host1 sudo iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP
 sudo ip netns exec host2 sudo iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP
+
 # turn off checksum offloading
+# セグメント破損の検出のため、チェックサムフィールドが存在する.
+# 本来ＴＣＰ実装によって計算され埋められるが, CPUリソースの節約のため、NICにオフロードされる
+# プロトコル実装の際に面倒なことになるのでオフにする
 sudo ip netns exec host2 sudo ethtool -K host2-veth1 tx off
 sudo ip netns exec host1 sudo ethtool -K host1-veth1 tx off
