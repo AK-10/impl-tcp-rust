@@ -6,3 +6,21 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# pnet:
+# Rustで低レイヤなネットワークプログラミングを行うためのcrate
+# `std::net`はTCPやUDPのソケットプログラミングに必要な構造体
+# やメソッドは含まれているが、トランスポートレイヤ以下のプロ
+# グラミングはできない
+# もう一つ下のレイヤに当たるIPのAPIを呼び出して送受信する必要
+# がある
+# 具体的には生ソケットをRustから利用するためにこのcrateを用いる
+pnet = "0.27"
+# Rustでのエラー処理を簡単に扱うcrate
+anyhow = "1.0"
+# 乱数を扱うcrate
+rand = "0.8"
+
+[dev-dependencies]
+# ctrl+cによるシグナルを簡単にハンドリングするためのcrate
+# examples をビルドしたときに使う
+ctrlc = "3.1"
